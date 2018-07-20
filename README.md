@@ -1,2 +1,1 @@
 # PaperTradingApp
-# PaperTradingApp
