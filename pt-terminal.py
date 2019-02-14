@@ -202,8 +202,12 @@ def buyStock(choice):
     writeHistory(choice, 'Buy', lookup(symbol)['price'], quantity, symbol)
     loadSlot(choice)
 
+# Sells stock from a given slot
 def sellStock(choice):
     cValues = False
+
+    # Have user input details about the stock they want to sell and force
+    # user to input valid values
     while not cValues:
         try:
             stock = input('Symbol: ').upper()
@@ -215,50 +219,69 @@ def sellStock(choice):
         else:
             cValues = True
 
+    # Open the csv for the slot
     try:
         with open(getSlotName(choice), 'r+', newline='') as file:
             fileReader = csv.DictReader(file)
             fileContent = []
-            sold =[]
+            notSold =[]
 
+            # Copy the contents of the csv into the list
             for row in fileReader:
                 fileContent.append(row)
 
+            # Find the correct stock in the file and count up how many shares of it
+            # is owned
             a = 0
             for s in fileContent:
                 if s['Symbol'] == stock and float(s['Buy_Price']) == price:
                     a = a + int(s['Quantity'])
 
+            # If the amount of stock in the file is less than the amout the user
+            # wants to sell abort action
             if a < amount:
                 print('Not Enough Shares or No Such Stock in Portfolio.\n')
                 return
 
+            # Remove the desired amount of stock from the file and add the stock's
+            # value to the slot's cash
             for stocks in fileContent:
+                # Finding the correct stock and price
                  if stocks['Symbol'] == stock and float(stocks['Buy_Price']) == price:
+                      # If there is not enough stock in one entry then subtract from
+                      # the amount to remove and then also remove the entry
                      if int(stocks['Quantity']) == amount:
                          stocks['Quantity'] = int(stocks['Quantity']) - amount
                          cash = cash + (amount * float(stocks['Buy_Price']))
                          amount = 0
                          continue
-                     elif int(stocks['Quantity']) > amount:
+                     # If there is not enough stock in one entry then subtract from
+                     # the amount to remove and then also remove the entry
+                     if int(stocks['Quantity']) >= amount:
                          stocks['Quantity'] = int(stocks['Quantity']) - amount
                          cash = cash + (amount * float(stocks['Buy_Price']))
                          amount = 0
+                    # If there is enough stock in on entry then remove from that entry's
+                    # quantity
                      elif int(stocks['Quantity']) < amount and amount != 0:
                          amount = amount - int(stocks['Quantity'])
                          cash = cash + (int(stocks['Quantity']) * float(stocks['Buy_Price']))
                          continue
-                 sold.append(stocks)
+                # Keep track of the entries that were not removed
+                 notSold.append(stocks)
 
+            # Overwrite the file with its new contents
             fileWriter = csv.DictWriter(file, fieldnames=['Symbol', 'Quantity', 'Buy_Price'])
             file.seek(0)
             file.truncate()
             fileWriter.writeheader()
-            for row in sold:
+            for row in notSold:
                 fileWriter.writerow(row)
 
+            # Add the cash obtained from selling to the slot
             addCash(cash, choice)
 
+        # Record the action
         writeHistory(choice, 'Sell', price, amount, stock)
         loadSlot(choice)
 
@@ -266,6 +289,7 @@ def sellStock(choice):
         print('There are no stocks to sell.\n')
         loadSlot(choice)
 
+# Displays the given slots action history
 def showHistory(choice):
     try:
         with open(getSlotNameH(choice), 'r', newline='') as file:
