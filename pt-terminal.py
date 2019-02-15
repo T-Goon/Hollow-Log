@@ -19,7 +19,10 @@ def main():
 
         a = 0
         while not(a >= 1 and a <=8):
-            a = int(input())
+            try:
+                a = int(input())
+            except(ValueError):
+                print("Invalid input.")
 
         # Each number coresponds to a menu choice
         if a == 1:
@@ -111,7 +114,7 @@ def loadSlot(choice):
     print()
 
 # Adds cash to the given slot
-def addCash(addedCash, choice):
+def addCash(addedCash, choice, buyOrSell = False):
     with open('accounts.csv', 'r+', newline='') as f:
         fContent =[]
         fReader = csv.DictReader(f)
@@ -132,10 +135,11 @@ def addCash(addedCash, choice):
             fWriter.writerow(row)
 
     # Record the action in the history csv
-    if addedCash > 0:
-        writeHistory(choice, 'Add Cash', addedCash, None, None)
-    elif addedCash < 0:
-        writeHistory(choice, 'Remove Cash', addedCash, None, None)
+    if not buyOrSell:
+        if addedCash > 0:
+            writeHistory(choice, 'Add Cash', addedCash, None, None)
+        elif addedCash < 0:
+            writeHistory(choice, 'Remove Cash', addedCash, None, None)
 
 # Buys a stock for a given slot
 def buyStock(choice):
@@ -148,12 +152,12 @@ def buyStock(choice):
         return
 
     # Open the accounts csv
+    cash = 0
     with open('accounts.csv', 'r', newline='') as file:
         fileReader = csv.DictReader(file)
-        a = []
+
         # Get the data for the given slot
         for row in fileReader:
-            a.append(row)
             if choice == int(row['slot']):
                 cash = float(row['cash'])
 
@@ -163,18 +167,9 @@ def buyStock(choice):
         if price * quantity > cash:
             print('Not Enough Cash')
             return
-        else:
-            # Update the cash/ buying the stock
-            for row in a:
-                if int(row['slot']) == choice:
-                    row['cash'] = float(row['cash']) - (price * quantity)
 
-            # Update the accounts csv
-            with open('accounts.csv', 'w', newline='') as f:
-                fWriter = csv.DictWriter(f, fieldnames=['slot', 'cash'])
-                fWriter.writeheader()
-                for row in a:
-                    fWriter.writerow(row)
+    # Update the slot's cash
+    addCash(-(price * quantity), choice, True)
 
     # Updates the csv of the given slot with the newly bought stocks
     try:
@@ -245,26 +240,27 @@ def sellStock(choice):
 
             # Remove the desired amount of stock from the file and add the stock's
             # value to the slot's cash
+            remaining = amount
             for stocks in fileContent:
                 # Finding the correct stock and price
                  if stocks['Symbol'] == stock and float(stocks['Buy_Price']) == price:
                       # If there is not enough stock in one entry then subtract from
                       # the amount to remove and then also remove the entry
-                     if int(stocks['Quantity']) == amount:
-                         stocks['Quantity'] = int(stocks['Quantity']) - amount
-                         cash = cash + (amount * float(stocks['Buy_Price']))
-                         amount = 0
+                     if int(stocks['Quantity']) == remaining:
+                         stocks['Quantity'] = int(stocks['Quantity']) - remaining
+                         cash = cash + (remaining * float(stocks['Buy_Price']))
+                         remaining = 0
                          continue
                      # If there is not enough stock in one entry then subtract from
                      # the amount to remove and then also remove the entry
-                     if int(stocks['Quantity']) >= amount:
-                         stocks['Quantity'] = int(stocks['Quantity']) - amount
-                         cash = cash + (amount * float(stocks['Buy_Price']))
-                         amount = 0
+                     if int(stocks['Quantity']) >= remaining:
+                         stocks['Quantity'] = int(stocks['Quantity']) - remaining
+                         cash = cash + (remaining * float(stocks['Buy_Price']))
+                         remaining = 0
                     # If there is enough stock in on entry then remove from that entry's
                     # quantity
-                     elif int(stocks['Quantity']) < amount and amount != 0:
-                         amount = amount - int(stocks['Quantity'])
+                     elif int(stocks['Quantity']) < remaining and remaining != 0:
+                         remaining = remaining - int(stocks['Quantity'])
                          cash = cash + (int(stocks['Quantity']) * float(stocks['Buy_Price']))
                          continue
                 # Keep track of the entries that were not removed
@@ -279,7 +275,7 @@ def sellStock(choice):
                 fileWriter.writerow(row)
 
             # Add the cash obtained from selling to the slot
-            addCash(cash, choice)
+            addCash(cash, choice, True)
 
         # Record the action
         writeHistory(choice, 'Sell', price, amount, stock)
@@ -304,11 +300,18 @@ def showHistory(choice):
     except FileNotFoundError:
         print('No History\n')
 
-def writeHistory(choice, type, cash, quantity, symbol):
+# Adds a row to the give slot's history file
+# choice: int 1-3, slot number
+# type: string, add/remove cash, buy/sell stock
+# quantity: int, amount of stock bought or sold
+# symbol: sting|None, Symbol of the stock bought or sold 
+def writeHistory(choice, type, cash, quantity, symbol = None):
     with open(getSlotNameH(choice), 'a', newline='') as file:
         fileWriter = csv.writer(file)
+        # If no stock symbol is given then action must be add or remove cash
         if symbol == None:
             fileWriter.writerow([type, cash, datetime.datetime.now()])
+        # Stock symbol is given so action must be a sell or buy of a stock
         else:
             fileWriter.writerow([type, symbol, cash, quantity, datetime.datetime.now()])
 
