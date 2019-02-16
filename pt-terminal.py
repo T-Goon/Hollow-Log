@@ -304,7 +304,7 @@ def showHistory(choice):
 # choice: int 1-3, slot number
 # type: string, add/remove cash, buy/sell stock
 # quantity: int, amount of stock bought or sold
-# symbol: sting|None, Symbol of the stock bought or sold 
+# symbol: sting|None, Symbol of the stock bought or sold
 def writeHistory(choice, type, cash, quantity, symbol = None):
     with open(getSlotNameH(choice), 'a', newline='') as file:
         fileWriter = csv.writer(file)
@@ -388,6 +388,8 @@ def lookup(symbol):
     except:
         return None
 
+# Resets a slot's data to intial default values
+# choice: int, 1-3
 def clearSlot(choice):
 
     try:
@@ -395,14 +397,18 @@ def clearSlot(choice):
     except FileNotFoundError:
         print('', end='')
 
+    # Resets the slot's cash to the intial value in the accounts file
     with open('accounts.csv', 'r+', newline='') as f:
         fContent =[]
         fReader = csv.DictReader(f)
+
+        # Copy data in file and update the row of corresponding slot
         for row in fReader:
             if int(row['slot']) == choice:
                 row['cash'] = 100000
             fContent.append(row)
 
+        # Overwrite file with updated data
         fWriter = csv.DictWriter(f, fieldnames=['slot', 'cash'])
         f.seek(0)
         fWriter.writeheader()
