@@ -415,6 +415,8 @@ def clearSlot(choice):
         for row in fContent:
             fWriter.writerow(row)
 
+# Gives the name of the slot based on the chioce
+# Choice: int, 1|2|3
 def getSlotName(choice):
     if choice == 1:
         return('slot1.csv')
@@ -423,6 +425,8 @@ def getSlotName(choice):
     elif choice == 3:
         return('slot3.csv')
 
+# Gives the name of the slot history file based on the chioce
+# Choice: int, 1|2|3
 def getSlotNameH(choice):
     if choice == 1:
         return('history1.csv')
