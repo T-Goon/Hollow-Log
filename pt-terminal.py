@@ -114,6 +114,9 @@ def loadSlot(choice):
     print()
 
 # Adds cash to the given slot
+# addedCash: flaot
+# choice: int, 1|2|3
+# buyOrSell: Bool
 def addCash(addedCash, choice, buyOrSell = False):
     with open('accounts.csv', 'r+', newline='') as f:
         fContent =[]
@@ -198,6 +201,7 @@ def buyStock(choice):
     loadSlot(choice)
 
 # Sells stock from a given slot
+# choice: int, 1|2|3
 def sellStock(choice):
     cValues = False
 

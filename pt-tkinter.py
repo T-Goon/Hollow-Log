@@ -9,13 +9,16 @@ class App:
 
     def __init__(self, master):
 
+        # List of things currently in the window
         self.inWindow = []
+        # List of things to remove from the window
         self.inWindowTD = []
 
         self.normalFont = ('times', 16)
 
         master.title('Hollow Log')
 
+        # Initialize the slot choice menu
         self.frame = Frame(master)
         self.frame.pack()
 
@@ -41,14 +44,18 @@ class App:
         self.button.pack(side=TOP)
         self.inWindow.append(self.button)
 
+    # Loads a slot or creates a new on if it does not exist
     def loadSlot(self, choice):
         self.slot = choice
         self.closeCurrentWindow()
 
+        # Try to open the accounts csv
         try:
             with open('accounts.csv', 'r+', newline='') as file:
                 slotExists = False
                 fileReader = csv.DictReader(file)
+
+                # Find the slot in the csv and if so copy down the amount of cash it shares
                 for row in fileReader:
                     if int(row['slot']) == choice:
                         cashText = Label(
@@ -61,6 +68,7 @@ class App:
 
                         slotExists = True
 
+                # If the slot does not exist then add it to the csv with default values
                 if not slotExists:
                     fileWriter = csv.DictWriter(file, fieldnames=['slot', 'cash'])
                     fileWriter.writerow({'slot' : choice, 'cash' : '100000'})
@@ -71,11 +79,13 @@ class App:
                     cashText.pack()
                     self.inWindowTD.append(cashText)
 
+        # The accounts csv is not created yet so create it
         except FileNotFoundError:
             with open('accounts.csv', 'w', newline='') as file:
                 fileWriter = csv.DictWriter(file, fieldnames=['slot', 'cash'])
 
                 fileWriter.writeheader()
+                # Add the current slot to the csv with default values
                 fileWriter.writerow({'slot' : choice, 'cash' : '100000'})
 
             cashText = Label(self.frame,
@@ -84,10 +94,12 @@ class App:
             cashText.pack()
             self.inWindowTD.append(cashText)
 
+        # Try to open the slot specific csv which holds the slot's stock data
         try:
-            with open(self.getSlotName(choice), 'r', newline='') as f:
+            with open(self.getSlotName(), 'r', newline='') as f:
                 fReader = csv.DictReader(f)
 
+                # Print out the data in tabel format
                 header = Label(self.frame,
                 text = 'Stocks:\n',
                 font = self.normalFont)
@@ -126,6 +138,7 @@ class App:
         clearSlotButton.pack()
         self.inWindowTD.append(clearSlotButton)
 
+    # Removes objects from the current window
     def closeCurrentWindow(self):
         for widgets in self.inWindow:
             widgets.pack_forget()
@@ -139,6 +152,7 @@ class App:
         for widget in self.inWindow:
             widget.pack()
 
+    # Displays the main menu
     def showMenu(self):
         lookUpButton = Button(self.frame, text = 'Look Up', command = self.find)
         lookUpButton.pack()
@@ -152,11 +166,11 @@ class App:
         sellStockButton.pack()
         self.inWindowTD.append(sellStockButton)
 
-        addCashButton = Button(self.frame, text = 'Add Cash', command =lambda : self.changeCashMenu('a'))
+        addCashButton = Button(self.frame, text = 'Add Cash', command =lambda : self.changeCashMenu(True))
         addCashButton.pack()
         self.inWindowTD.append(addCashButton)
 
-        removeCashButton = Button(self.frame, text = 'Remove Cash', command =lambda : self.changeCashMenu('r'))
+        removeCashButton = Button(self.frame, text = 'Remove Cash', command =lambda : self.changeCashMenu(False))
         removeCashButton.pack()
         self.inWindowTD.append(removeCashButton)
 
@@ -164,6 +178,7 @@ class App:
         showHistoryButton.pack()
         self.inWindowTD.append(showHistoryButton)
 
+    # Display the lookup stock menu
     def find(self):
         self.closeCurrentWindow()
         lookUpText = Label(self.frame, text = 'Look Up\n', font = self.normalFont)
@@ -187,6 +202,8 @@ class App:
         self.priceText.pack()
         self.inWindowTD.append(self.priceText)
 
+    # Lookup and return price if it exists
+    # Symbol: String
     def findPrice(self, symbol):
         price = self.lookup(symbol)
         if price == None:
@@ -194,6 +211,7 @@ class App:
         else:
             self.priceText['text'] = '$'+str(price['price'])
 
+    # Display the buy stock menu
     def buyMenu(self):
         self.closeCurrentWindow()
 
@@ -213,7 +231,7 @@ class App:
         n.insert(0, 'Quantity')
         self.inWindowTD.append(n)
 
-        buyButton = Button(self.frame, text = 'Buy', command =lambda : self.buy( e.get().upper(), int(n.get()) ) )
+        buyButton = Button(self.frame, text = 'Buy', command =lambda : self.buy(e.get().upper(), int(n.get()) ) )
         buyButton.pack()
         self.inWindowTD.append(buyButton)
 
@@ -221,16 +239,26 @@ class App:
         backButton.pack()
         self.inWindowTD.append(backButton)
 
+    # Buys a stock for a given slot
+    # symbol: String
+    # quantity: int
     def buy(self, symbol, quantity):
+
+        # Make sure the stock symbol is valid
         if self.lookup(symbol) == None:
-            print('Bad Stock Symbol')
+            badSymbol = Label(self.frame,
+            text = 'Bad Stock Symbol.\n',
+            font = self.normalFont)
+            NotEnoughShares.pack()
+            self.inWindowTD.append(badSymbol)
             return
 
+        # Open the accounts csv
         with open('accounts.csv', 'r', newline='') as file:
             fileReader = csv.DictReader(file)
-            a = []
+
+            # Get the data for the given slot
             for row in fileReader:
-                a.append(row)
                 if self.slot == int(row['slot']):
                     cash = float(row['cash'])
 
@@ -241,38 +269,36 @@ class App:
                 text = 'Not Enough Cash',
                 font = self.normalFont)
                 return
-            else:
-                for row in a:
-                    if int(row['slot']) == self.slot:
-                        row['cash'] = float(row['cash']) - (price * quantity)
 
-                with open('accounts.csv', 'w', newline='') as f:
-                    fWriter = csv.DictWriter(f, fieldnames=['slot', 'cash'])
-                    fWriter.writeheader()
-                    for row in a:
-                        fWriter.writerow(row)
+            # Update the slots cash
+            self.addCash(-(price * quantity), True)
 
         try:
-            with open(self.getSlotName(self.slot), 'r', newline='') as f:
+            with open(self.getSlotName(), 'r', newline='') as f:
                 reader = csv.DictReader(f)
                 dict = {}
                 for row in reader:
                     dict.update(row)
-                with open(self.getSlotName(self.slot), 'a', newline='') as file:
+                # Append the data to the end of the file
+                with open(self.getSlotName(), 'a', newline='') as file:
                     writer = csv.DictWriter(file, fieldnames=['Symbol', 'Quantity', 'Buy_Price'])
 
                     stock = self.lookup(symbol)
                     writer.writerow({'Symbol' : symbol, 'Quantity' : quantity,'Buy_Price' : stock['price']})
+
+        # Create a new file and add the bought stock to it
         except FileNotFoundError:
-            with open(self.getSlotName(self.slot), 'w', newline='') as file:
+            with open(self.getSlotName(), 'w', newline='') as file:
                 writer = csv.DictWriter(file, fieldnames=['Symbol', 'Quantity', 'Buy_Price'])
                 writer.writeheader()
                 stock = self.lookup(symbol)
                 writer.writerow({'Symbol' : symbol, 'Quantity' : quantity,'Buy_Price' : stock['price']})
 
-        self.writeHistory(self.slot, 'Buy', self.lookup(symbol)['price'], quantity, symbol)
+        # Record the action and load the slot data again
+        self.writeHistory('Buy', self.lookup(symbol)['price'], quantity, symbol)
         self.backToMenu()
 
+    # Displays the sell stock menu
     def sellMenu(self):
         self.closeCurrentWindow()
 
@@ -306,25 +332,41 @@ class App:
         backButton.pack()
         self.inWindowTD.append(backButton)
 
+    # Sells stock from a given slot
     def sell(self, symbol, quantity, price):
-        cash = 0.0
+
+        # Do nothing if the values are invalid
+        try:
+            symbol = symbol.upper()
+            amount = int(quantity)
+            price = float(price)
+            cash = 0.0
+        except:
+            return
+
 
         try:
-            with open(self.getSlotName(self.slot), 'r+', newline='') as file:
+            with open(self.getSlotName(), 'r+', newline='') as file:
                 fileReader = csv.DictReader(file)
                 fileContent = []
-                sold =[]
+                notSold = []
 
+                # Copy the contents of the csv into the list
                 for row in fileReader:
                     fileContent.append(row)
 
+                # Find the correct stock in the file and count up how many shares of it
+                # is owned
                 a = 0
                 for s in fileContent:
                     if s['Symbol'] == symbol and float(s['Buy_Price']) == price:
                         a = a + int(s['Quantity'])
 
-                if a < quantity:
-                    print('Not Enough Shares or No Such Stock in Portfolio.\n')
+                # If the amount of stock in the file is less than the amout the user
+                # wants to sell abort action
+                print(a)
+                if a < amount:
+
                     NotEnoughShares = Label(self.frame,
                     text = 'Not Enough Shares or No Such Stock in Portfolio.\n',
                     font = self.normalFont)
@@ -332,33 +374,46 @@ class App:
                     self.inWindowTD.append(NotEnoughShares)
                     return
 
+                # Remove the desired amount of stock from the file and add the stock's
+                # value to the slot's cash
+                remaining = amount
                 for stocks in fileContent:
+                    # Finding the correct stock and price
                      if stocks['Symbol'] == symbol and float(stocks['Buy_Price']) == price:
-                         if int(stocks['Quantity']) == quantity:
-                             stocks['Quantity'] = int(stocks['Quantity']) - quantity
-                             cash = cash + (quantity * float(stocks['Buy_Price']))
-                             quantity = 0
+                          # If there is not enough stock in one entry then subtract from
+                          # the amount to remove and then also remove the entry
+                         if int(stocks['Quantity']) == remaining:
+                             stocks['Quantity'] = int(stocks['Quantity']) - remaining
+                             cash = cash + (remaining * float(stocks['Buy_Price']))
+                             remaining = 0
                              continue
-                         elif int(stocks['Quantity']) > quantity:
-                             stocks['Quantity'] = int(stocks['Quantity']) - quantity
-                             cash = cash + (quantity * float(stocks['Buy_Price']))
-                             quantity = 0
-                         elif int(stocks['Quantity']) < quantity and quantity != 0:
-                             quantity = quantity - int(stocks['Quantity'])
+                         # If there is not enough stock in one entry then subtract from
+                         # the amount to remove and then also remove the entry
+                         if int(stocks['Quantity']) >= remaining:
+                             stocks['Quantity'] = int(stocks['Quantity']) - remaining
+                             cash = cash + (remaining * float(stocks['Buy_Price']))
+                             remaining = 0
+                        # If there is enough stock in on entry then remove from that entry's
+                        # quantity
+                         elif int(stocks['Quantity']) < remaining and remaining != 0:
+                             remaining = remaining - int(stocks['Quantity'])
                              cash = cash + (int(stocks['Quantity']) * float(stocks['Buy_Price']))
                              continue
-                     sold.append(stocks)
+                    # Keep track of the entries that were not removed
+                     notSold.append(stocks)
 
                 fileWriter = csv.DictWriter(file, fieldnames=['Symbol', 'Quantity', 'Buy_Price'])
                 file.seek(0)
                 file.truncate()
                 fileWriter.writeheader()
-                for row in sold:
+                for row in notSold:
                     fileWriter.writerow(row)
 
-                addCash(cash, self.slot)
+                # Add the cash obtained from selling to the slot
+                self.addCash(cash, True)
 
-            self.writeHistory(self.slot, 'Sell', price, quantity, symbol)
+
+            self.writeHistory('Sell', price, amount, symbol)
             self.backToMenu()
 
         except FileNotFoundError:
@@ -366,28 +421,37 @@ class App:
             text = 'There are no stocks to sell.\n',
             font = self.normalFont)
 
+    # Display menu for adding/removing cash
+    # opp: True=add, False=remove
     def changeCashMenu(self, opp):
         self.closeCurrentWindow()
 
         changeCashText = Label(self.frame,
         font = self.normalFont)
         changeCashText.pack()
+
         self.inWindowTD.append(changeCashText)
-        if opp == 'a':
+
+        if opp:
             changeCashText['text'] = 'Add Cash'
-        elif opp == 'r':
+        elif not opp:
             changeCashText['text'] = 'Remove Cash'
 
         c = Entry(self.frame)
         c.pack()
         self.inWindowTD.append(c)
 
-        if opp == 'a':
+        if opp:
             c.insert(0, 'Enter Cash to Add')
-        elif opp == 'r':
+        elif not opp:
             c.insert(0, 'Enter Cash to Remove')
 
-        changeCashButton = Button(self.frame, text = 'Submit', command =lambda : self.addCash(int(c.get()), opp))
+        if opp:
+            changeCashButton = Button(self.frame, text = 'Submit',
+            command = lambda : self.addCash(int(c.get()), False))
+        elif not opp:
+            changeCashButton = Button(self.frame, text = 'Submit',
+            command = lambda : self.addCash(-int(c.get()), False))
         changeCashButton.pack()
         self.inWindowTD.append(changeCashButton)
 
@@ -395,34 +459,44 @@ class App:
         backButton.pack()
         self.inWindowTD.append(backButton)
 
-    def addCash(self, addedCash, opp):
-        if opp == 'r':
-            addedCash*= -1
-
+    # Adds cash to the given slot
+    # addedCash: flaot
+    # choice: int, 1|2|3
+    # buyOrSell: Bool
+    def addCash(self, addedCash, buyOrSell = False):
         with open('accounts.csv', 'r+', newline='') as f:
             fContent =[]
             fReader = csv.DictReader(f)
+
+            # Find the given slot in the accounts csv and update cash
             for row in fReader:
                 if int(row['slot']) == self.slot:
                     row['cash'] = float(row['cash']) + addedCash
+                # Copies updated content into list
                 fContent.append(row)
 
+            # Overwrites the contents of the account csv with the updated contents
             fWriter = csv.DictWriter(f, fieldnames=['slot', 'cash'])
             f.seek(0)
             fWriter.writeheader()
+
             for row in fContent:
                 fWriter.writerow(row)
-        if addedCash > 0:
-            self.writeHistory(self.slot, 'Add Cash', addedCash, None, None)
-        elif addedCash < 0:
-            self.writeHistory(self.slot, 'Remove Cash', addedCash, None, None)
+
+        if not buyOrSell:
+            if addedCash > 0:
+                self.writeHistory('Add Cash', addedCash, None, None)
+            elif addedCash < 0:
+                self.writeHistory('Remove Cash', addedCash, None, None)
 
         self.backToMenu()
 
+    # Displays the given slots action history
     def showHistory(self):
         self.closeCurrentWindow()
+
         try:
-            with open(self.getSlotNameH(self.slot), 'r', newline='') as file:
+            with open(self.getSlotNameH(), 'r', newline='') as file:
                 fileReader = csv.reader(file)
 
                 title = Label(self.frame,
@@ -454,51 +528,61 @@ class App:
         backButton.pack()
         self.inWindowTD.append(backButton)
 
+    # Closes current window and displays the main menu
     def backToMenu(self):
         self.closeCurrentWindow()
         self.loadSlot(self.slot)
 
+    # Displays a window to confirm clearing of slot
     def clearSlotCheck(self):
         check = Button(self.frame, text = 'Are You Sure?', command = self.clearSlot)
         check.pack()
         self.inWindowTD.append(check)
 
+    # Resets a slot's data to intial default values
     def clearSlot(self):
             try:
-                os.unlink(self.getSlotName(self.slot) )
+                os.unlink(self.getSlotName() )
             except FileNotFoundError:
                 pass
             else:
-                os.unlink(self.getSlotNameH(self.slot))
+                os.unlink(self.getSlotNameH())
 
+            # Resets the slot's cash to the intial value in the accounts file
             with open('accounts.csv', 'r+', newline='') as f:
                 fContent =[]
                 fReader = csv.DictReader(f)
+
+                # Copy data in file and update the row of corresponding slot
                 for row in fReader:
                     if int(row['slot']) == self.slot:
                         row['cash'] = 100000
                     fContent.append(row)
 
+                # Overwrite file with updated data
                 fWriter = csv.DictWriter(f, fieldnames=['slot', 'cash'])
                 f.seek(0)
                 fWriter.writeheader()
                 for row in fContent:
                     fWriter.writerow(row)
             self.backToMenu()
-    def getSlotName(self, choice):
-        if choice == 1:
+
+    # Gives the name of the slot based on the chioce
+    def getSlotName(self):
+        if self.slot == 1:
             return('slot1.csv')
-        elif choice == 2:
+        elif self.slot == 2:
             return('slot2.csv')
-        elif choice == 3:
+        elif self.slot == 3:
             return('slot3.csv')
 
-    def getSlotNameH(self, choice):
-        if choice == 1:
+    # Gives the name of the slot history file based on the chioce
+    def getSlotNameH(self):
+        if self.slot == 1:
             return('history1.csv')
-        elif choice == 2:
+        elif self.slot == 2:
             return('history2.csv')
-        elif choice == 3:
+        elif self.slot == 3:
             return('history3.csv')
 
     def lookup(self, symbol):
@@ -574,8 +658,12 @@ class App:
         except:
             return None
 
-    def writeHistory(self, choice, type, cash, quantity, symbol):
-        with open(self.getSlotNameH(choice), 'a', newline='') as file:
+    # Adds a row to the give slot's history file
+    # type: string, add/remove cash, buy/sell stock
+    # quantity: int, amount of stock bought or sold
+    # symbol: sting|None, Symbol of the stock bought or sold
+    def writeHistory(self, type, cash, quantity, symbol):
+        with open(self.getSlotNameH(), 'a', newline='') as file:
             fileWriter = csv.writer(file)
             if symbol == None:
                 fileWriter.writerow([type, cash, datetime.datetime.now()])
