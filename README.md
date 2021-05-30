@@ -1,4 +1,4 @@
-# PaperTradingApp
+# Hollow Log
 
 A Python program that allows for the basic paper trading of stocks. There is a version that runs through the terminal and another with a UI made with Python Tkinter.
 The program allows for 3 accounts that have a default of $100 000 in cash. All persistant data the program uses is stored in generated .csv files.
